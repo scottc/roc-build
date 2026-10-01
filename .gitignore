@@ -1,0 +1,5 @@
+platform/targets/x64musl/crt1.o
+platform/targets/x64musl/libc.a
+platform/targets/x64musl/libcompiler_rt.a
+platform/targets/x64musl/libhost.a
+platform/targets/x64musl/libzigc.a
