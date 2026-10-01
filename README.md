@@ -55,13 +55,15 @@ main! = |_args| {
 ```
 ```sh
 roc run examples/pwd.roc
-#info: Hello World.
-#info: wave: 1 tasks in parallel
-#info: start Print working directory (id=0)
-#info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/pwd
-#/home/anon/Projects/roc-build
-#info: done  Print working directory
-#info: all tasks finished
+```
+```
+info: Hello World.
+info: wave: 1 tasks in parallel
+info: start Print working directory (id=0)
+info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/pwd
+/home/anon/Projects/roc-build
+info: done  Print working directory
+info: all tasks finished
 ```
 
 ## Requirements
@@ -73,6 +75,47 @@ roc run examples/pwd.roc
 
 ```sh
 roc run examples/bundle_self.roc
+```
+```
+info: Build host, build & bundle platform.
+info: wave: 2 tasks in parallel
+info: start Install platform dependencies (id=1)
+info: start Build Zig Host (id=2)
+info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/cp
+info:       -a
+info:       vendor/targets/x64musl/.
+info:       platform/targets/x64musl/
+info:   $ /nix/store/83qs3ksyjclr149vpxbaz1z18wvi9rms-zig-0.16.0/bin/zig
+info:       build-lib
+info:       -fPIC
+info:       -OReleaseSafe
+info:       -target
+info:       x86_64-linux-musl
+info:       -lc
+info:       host/host.zig
+info:       -femit-bin=platform/targets/x64musl/libhost.a
+info: done  Install platform dependencies
+info: done  Build Zig Host
+info: wave: 1 tasks in parallel
+info: start Roc Bundle (id=3)
+info:   $ /nix/store/krc90wzmv2mkax5hp8zrpi2y5phnqsvx-roc-nightly-2026-09-27-a3ce7f1/bin/roc
+info:       bundle
+info:       platform/main.roc
+info:       platform/Build.roc
+info:       platform/Host.roc
+info:       platform/Log.roc
+info:       platform/targets/x64musl/crt1.o
+info:       platform/targets/x64musl/libc.a
+info:       platform/targets/x64musl/libcompiler_rt.a
+info:       platform/targets/x64musl/libzigc.a
+info:       platform/targets/x64musl/libhost.a
+Created: cxyAQTomLcUFHczRwdmGxKT12EB2tpdgownuhxhJfGu.tar.zst
+Compressed size: 1708119 bytes
+Uncompressed size: 7427024 bytes
+Compression ratio: 4.35:1
+Time: 55 ms
+info: done  Roc Bundle
+info: all tasks finished
 ```
 
 ## Bootstrap from scratch, Build & Run.
