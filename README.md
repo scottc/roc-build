@@ -1,6 +1,8 @@
 # Roc-Build
 
-A concurrent build system for roc, to build non-trivial roc platforms & apps, a replacement for build.zig.
+A general purpose parallel task runner.
+
+That was originally designed as a concurrent build system for roc, to build non-trivial roc platforms & apps, as a replacement for build.zig.
 
 ## About
 
@@ -22,7 +24,7 @@ main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
 	Log.info!("Hello World.")
 
-  pwd_id = 0
+    pwd_id = 0
 	pwd = Build.cmd({
 		id: pwd_id,
 		depends_on: [],
@@ -50,6 +52,16 @@ main! = |_args| {
 		}
 	}
 }
+```
+```sh
+roc run examples/pwd.roc
+#info: Hello World.
+#info: wave: 1 tasks in parallel
+#info: start Print working directory (id=0)
+#info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/pwd
+#/home/anon/Projects/roc-build
+#info: done  Print working directory
+#info: all tasks finished
 ```
 
 ## Requirements
