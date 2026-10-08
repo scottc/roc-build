@@ -13,7 +13,7 @@ I built this to service the real-world use case that is the `scottc/godot-roc` p
 ## Example
 ```roc
 app [main!] {
-	pf: platform "https://github.com/scottc/roc-build/releases/download/0.0.1-pre-alpha-test1/8jZuyEFpCc7ep6yu2iXBT4cAYoxZdjTk5kxShUCMXqgx.tar.zst",
+	pf: platform "https://github.com/scottc/roc-build/releases/download/0.0.2/mw5tPRY2nWYo89bQhuzQJqLMk2h7feQhToCXLmfT5rd.tar.zst",
 	roc: "nightly-2026-10-06-c34079d",
 }
 
