@@ -2,7 +2,7 @@ platform "build"
     requires {} { main! : List(Str) => Try({}, [Exit(I32), ..]) }
     exposes [Build, Log]
     packages {
-        roc: "nightly-2026-09-27-a3ce7f1",
+        roc: "nightly-2026-10-06-c34079d",
     }
     provides { "roc_main": main_for_host! }
     hosted {

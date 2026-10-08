@@ -14,7 +14,7 @@ I built this to service the real-world use case that is the `scottc/godot-roc` p
 ```roc
 app [main!] {
 	pf: platform "https://github.com/scottc/roc-build/releases/download/0.0.1-pre-alpha-test1/8jZuyEFpCc7ep6yu2iXBT4cAYoxZdjTk5kxShUCMXqgx.tar.zst",
-	roc: "nightly-2026-09-27-a3ce7f1",
+	roc: "nightly-2026-10-06-c34079d",
 }
 
 import pf.Build
@@ -69,7 +69,7 @@ info: all tasks finished
 ## Requirements
 - `zig 0.16.0` (if building this build platform from source)
 - `libc` runtime dependency (app development)
-- `roc` `nightly-2026-09-27-a3ce7f1` (app development)
+- `roc` `nightly-2026-10-06-c34079d` (app development)
 
 ## Build & Run this platform, with this platform!
 
@@ -98,7 +98,7 @@ info: done  Install platform dependencies
 info: done  Build Zig Host
 info: wave: 1 tasks in parallel
 info: start Roc Bundle (id=3)
-info:   $ /nix/store/krc90wzmv2mkax5hp8zrpi2y5phnqsvx-roc-nightly-2026-09-27-a3ce7f1/bin/roc
+info:   $ /nix/store/krc90wzmv2mkax5hp8zrpi2y5phnqsvx-roc-nightly-2026-10-06-c34079d/bin/roc
 info:       bundle
 info:       platform/main.roc
 info:       platform/Build.roc
@@ -121,7 +121,7 @@ info: all tasks finished
 ## Bootstrap from scratch, Build & Run.
 
 ```sh
-# Install zig 0.16.0 & roc nightly-2026-09-27-a3ce7f1
+# Install zig 0.16.0 & roc nightly-2026-10-06-c34079d
 # Note: we also depend on libc.
 # ...
 

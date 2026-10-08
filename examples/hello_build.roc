@@ -1,6 +1,6 @@
 app [main!] {
     pf: platform "../platform/main.roc",
-    roc: "nightly-2026-09-27-a3ce7f1",
+    roc: "nightly-2026-10-06-c34079d",
 }
 
 import pf.Build

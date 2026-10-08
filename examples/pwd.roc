@@ -1,6 +1,6 @@
 app [main!] {
-	pf: platform "https://github.com/scottc/roc-build/releases/download/0.0.1-pre-alpha-test1/8jZuyEFpCc7ep6yu2iXBT4cAYoxZdjTk5kxShUCMXqgx.tar.zst",
-	roc: "nightly-2026-09-27-a3ce7f1",
+	pf: platform "../platform/main.roc",
+	roc: "nightly-2026-10-06-c34079d",
 }
 
 import pf.Build
