@@ -14,7 +14,6 @@ I built this to service the real-world use case that is the `scottc/godot-roc` p
 ```roc
 app [main!] {
 	pf: platform "https://github.com/scottc/roc-build/releases/download/0.0.2/mw5tPRY2nWYo89bQhuzQJqLMk2h7feQhToCXLmfT5rd.tar.zst",
-	roc: "nightly-2026-10-06-c34079d",
 }
 
 import pf.Build
@@ -69,12 +68,12 @@ info: all tasks finished
 ## Requirements
 - `zig 0.16.0` (if building this build platform from source)
 - `libc` runtime dependency (app development)
-- `roc` `nightly-2026-10-06-c34079d` (app development)
+- `roc` (app development)
 
 ## Build & Run this platform, with this platform!
 
 ```sh
-roc run examples/bundle_self.roc
+nix develop --command roc run scripts/ci.roc
 ```
 ```
 info: Build host, build & bundle platform.

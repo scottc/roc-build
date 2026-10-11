@@ -1,9 +1,7 @@
 platform "build"
     requires {} { main! : List(Str) => Try({}, [Exit(I32), ..]) }
     exposes [Build, Log]
-    packages {
-        roc: "nightly-2026-10-06-c34079d",
-    }
+    packages {}
     provides { "roc_main": main_for_host! }
     hosted {
         "roc_build_run_graph": Host.run_graph!,
