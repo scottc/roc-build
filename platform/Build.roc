@@ -1,5 +1,12 @@
 import Host
 
+## Public name for a graph node (what Build.cmd returns).
+Cmd : Host.Task
+
+## Optional: same for ids / graph if you want stable public names.
+TaskId : Host.TaskId
+BuildGraph : Host.BuildGraph
+
 ## Public build API. Pure graph construction + one effect to run it.
 Build := [].{
     graph : List(Host.Task) -> Host.BuildGraph
