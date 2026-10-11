@@ -167,10 +167,10 @@ jobs:
           # Prefer lean devShells.ci when present
           if nix eval --raw .#devShells.x86_64-linux.ci >/dev/null 2>&1; then
             # shellcheck disable=SC2086
-            nix develop .#ci --command roc run scripts/bundle_self.roc -- ${ARGV}
+            nix develop .#ci --command roc run scripts/ci.roc -- ${ARGV}
           else
             # shellcheck disable=SC2086
-            nix develop --command roc run examples/bundle_self.roc -- ${ARGV}
+            nix develop --command roc run scripts/ci.roc -- ${ARGV}
           fi
 
       # Optional artefacts (enable when you want them; free tier has storage caps)
