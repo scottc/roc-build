@@ -11,7 +11,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = import nixpkgs { inherit system; };
-        rocNightlyPkg = roc-nightly.packages.${system}.nightly-2026-10-09-258ab27;
+        rocNightlyPkg = roc-nightly.packages.${system}.nightly-2026-10-06-c34079d;
 
       in
       {
@@ -32,7 +32,7 @@
 # zig:          $(zig version)
 #
 # Tip - To get started run the following command:
-# roc run examples/bundle_self.roc
+# roc run scripts/ci.roc
 # "
           '';
         };
