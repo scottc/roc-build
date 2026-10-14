@@ -73,7 +73,9 @@ info: all tasks finished
 ## Build & Run this platform, with this platform!
 
 ```sh
-nix develop --command roc run scripts/ci.roc
+# nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- shell
+blueprint shell
+roc run examples/bundle_self.roc
 ```
 ```
 info: Build host, build & bundle platform.
