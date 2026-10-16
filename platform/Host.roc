@@ -27,6 +27,8 @@ Host := [].{
 
     BuildGraph : {
         tasks : List(Task),
+        max_memory : U64,    # 0 = unlimited (not recommended)
+        max_parallel : U64,  # 0 = unlimited
     }
 
     # Hosted effects

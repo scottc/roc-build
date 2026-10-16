@@ -2,90 +2,59 @@ app [main!] {
     pf: platform "../platform/main.roc",
 }
 
+import pf.Mem
 import pf.Build
+import pf.BuildCmd
 import pf.Log
 
 main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
-    Log.info!("CI: glue → host → bundle")
+    #limits = parse_limits(args) # { max_memory, max_parallel }
+    Log.info!("CI: gen glue → static test host → static test platform")
 
-    # 0) Generate ABI from current platform/Host types
-    gen_glue = Build.cmd_simple({
-        program: "roc",
-        args: [
-            "glue",
-            # Resolve ZigGlue via env in a small wrapper, or pass absolute path.
-            # Simplest honest option: require ROC_ZIG_GLUE in the environment.
-            "${/* see note below */}",
-        ],
-        description: "Generate host/roc_platform_abi.zig",
-        depends_on: [],
-        cwd: "",
-        env: [],
-    })
-
-    # Prefer a shell one-liner so path resolution stays in one place:
-    gen_glue = Build.cmd_simple({
+    gen_glue = BuildCmd.new({
         program: "sh",
         args: ["-c", "scripts/gen_glue.sh"],
         description: "Generate host/roc_platform_abi.zig",
-        depends_on: [],
-        cwd: "",
-        env: [],
     })
+    .with_memory(Mem.gb(1))
 
-    cp = Build.cmd_simple({
+    cp = BuildCmd.new({
         program: "cp",
         args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
         description: "Install platform dependencies",
-        depends_on: [],
-        cwd: "",
-        env: [],
     })
+    .with_memory(Mem.mb(256))
 
-    zig_build_lib = Build.cmd_simple({
-        program: "zig",
-        args: [
-            "build-lib",
-            "-fPIC",
-            "-OReleaseSafe",
-            "-target", "x86_64-linux-musl",
-            "-lc",
-            "host/host.zig",
-            "-femit-bin=platform/targets/x64musl/libhost.a",
-        ],
-        description: "Build Zig Host",
-        depends_on: [0],   # after glue
-        cwd: "",
-        env: [],
-    })
+    zig_build_lib =
+        BuildCmd.new({
+            program: "zig",
+            args: [
+                "build-lib",
+                "-fPIC",
+                "-OReleaseSafe",
+                "-target", "x86_64-linux-musl",
+                "-lc",
+                "host/host.zig",
+                "-femit-bin=platform/targets/x64musl/libhost.a",
+            ],
+            description: "Build Zig Host",
+        })
+        .depends_on([gen_glue])
+        .with_memory(Mem.gb(1))
 
-    roc_bundle = Build.cmd_simple({
-        program: "roc",
-        args: [
-            "bundle",
-            "platform/main.roc",
-            "platform/Build.roc",
-            "platform/Host.roc",
-            "platform/Log.roc",
-            "platform/targets/x64musl/crt1.o",
-            "platform/targets/x64musl/libc.a",
-            "platform/targets/x64musl/libcompiler_rt.a",
-            "platform/targets/x64musl/libzigc.a",
-            "platform/targets/x64musl/libhost.a",
-        ],
-        description: "Roc Bundle",
-        depends_on: [1, 2],  # cp + zig (indices after you order the list)
-        cwd: "",
-        env: [],
-    })
+    # TODO: zig test
+    # TODO: roc test
+    # TODO: roc check
+    # TODO: roc build an example...
 
-    graph = Build.graph([
-        gen_glue,       # 0
-        cp,             # 1
-        zig_build_lib,  # 2
-        roc_bundle,     # 3
-    ])
+    graph = Build.graph_with(
+        [gen_glue, cp, zig_build_lib],
+        {
+            max_memory: Mem.gb(2), # limits.max_memory,   # e.g. Mem.gb(2) from --memory=2gb
+            max_parallel: 4, # limits.max_parallel,
+        },
+    )
 
     match Build.run!(graph) {
         Ok({}) => {
@@ -98,3 +67,25 @@ main! = |_args| {
         }
     }
 }
+
+# parse_size : Str -> Try(U64, [BadSize(Str)])
+# parse_size = |_s| {
+#     #lower = Str.to_lower(s)
+#     # accept 2gb, 2GiB, 512mb, 1024kb, raw bytes
+#     #...
+#     Ok(2 * 1024 * 1024 * 1024)
+# }
+#
+# parse_args : List(Str) -> { max_memory : U64, max_parallel : U64, rest : List(Str) }
+# parse_args = |_args| {
+#     # walk flags:
+#     #   --memory=2gb | --memory 2gb
+#     #   --parallel=4 | --parallel 4
+#     # defaults: memory = 0 (unlimited) or a safe default; parallel = 0 (unlimited)
+#     #...
+#     {
+#         max_memory : 2 * 1024 * 1024 * 1024,
+#         max_parallel : 2 * 1024 * 1024 * 1024,
+#         rest : ["", ""],
+#     }
+# }

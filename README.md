@@ -14,176 +14,94 @@ I built this to service the real-world use case are the `scottc/godot-roc` & `sc
 
 ```roc
 app [main!] {
-	pf: platform "https://github.com/scottc/roc-build/releases/download/v0.0.4-alpha/3LfMjdvzZ7EzqZeffgjSJnKFtqn1BTN4b7mzRbHZ4CqP.tar.zst",
+    pf: platform "../platform/main.roc",
 }
 
+import pf.Mem
 import pf.Build
+import pf.BuildCmd
 import pf.Log
 
 main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
-	Log.info!("Hello World.")
+    #limits = parse_limits(args) # { max_memory, max_parallel }
+    Log.info!("CI: gen glue → static test host → static test platform")
 
-    pwd_id = 0
-	pwd = Build.cmd({
-		id: pwd_id,
-		depends_on: [],
-	 	inputs: [],
-		outputs: [],
-		program: "pwd",
-	 	args: [],
-	 	description: "Print working directory",
-	 	cwd: "",
-	 	env: [],
-	})
+    gen_glue = BuildCmd.new({
+        program: "sh",
+        args: ["-c", "scripts/gen_glue.sh"],
+        description: "Generate host/roc_platform_abi.zig",
+    })
+    .with_memory(Mem.gb(1))
 
-	graph = Build.graph([
-		pwd,
-	])
+    cp = BuildCmd.new({
+        program: "cp",
+        args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
+        description: "Install platform dependencies",
+    })
+    .with_memory(Mem.mb(256))
 
-	match Build.run!(graph) {
-		Ok({}) => {
-			Log.info!("all tasks finished")
-			Ok({})
-		}
-		Err(BuildFailed(msg)) => {
-			Log.error!(msg)
-			Err(Exit(1))
-		}
-	}
+    zig_build_lib =
+        BuildCmd.new({
+            program: "zig",
+            args: [
+                "build-lib",
+                "-fPIC",
+                "-OReleaseSafe",
+                "-target", "x86_64-linux-musl",
+                "-lc",
+                "host/host.zig",
+                "-femit-bin=platform/targets/x64musl/libhost.a",
+            ],
+            description: "Build Zig Host",
+        })
+        .depends_on([gen_glue])
+        .with_memory(Mem.gb(1))
+
+    graph = Build.graph_with(
+        [gen_glue, cp, zig_build_lib],
+        {
+            max_memory: Mem.gb(2),
+            max_parallel: 4,
+        },
+    )
+
+    match Build.run!(graph) {
+        Ok({}) => {
+            Log.info!("all tasks finished")
+            Ok({})
+        }
+        Err(BuildFailed(msg)) => {
+            Log.error!(msg)
+            Err(Exit(1))
+        }
+    }
 }
-```
-```sh
-roc run examples/pwd.roc
-```
-```
-info: Hello World.
-info: wave: 1 tasks in parallel
-info: start Print working directory (id=0)
-info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/pwd
-/home/anon/Projects/roc-build
-info: done  Print working directory
-info: all tasks finished
 ```
 
 ## Requirements
 
-- `zig 0.16.0` (if building this build platform from source)
+- `zig` (if building this build platform from source)
 - `libc` runtime dependency (app development)
 - `roc` (app development)
 
-## Build & Run this platform, with this platform!
+## Build this platform, with this platform!
+
+Note: nix & blueprint, is optional... and will be replaced with self-hosted implementations.
 
 ```sh
-# nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- shell
-blueprint shell
-roc run examples/bundle_self.roc
-```
-```
-info: Build host, build & bundle platform.
-info: wave: 2 tasks in parallel
-info: start Install platform dependencies (id=1)
-info: start Build Zig Host (id=2)
-info:   $ /nix/store/3qgy8q2j64v2m9jy3a5jmssacbblhd4r-coreutils-9.11/bin/cp
-info:       -a
-info:       vendor/targets/x64musl/.
-info:       platform/targets/x64musl/
-info:   $ /nix/store/83qs3ksyjclr149vpxbaz1z18wvi9rms-zig-0.16.0/bin/zig
-info:       build-lib
-info:       -fPIC
-info:       -OReleaseSafe
-info:       -target
-info:       x86_64-linux-musl
-info:       -lc
-info:       host/host.zig
-info:       -femit-bin=platform/targets/x64musl/libhost.a
-info: done  Install platform dependencies
-info: done  Build Zig Host
-info: wave: 1 tasks in parallel
-info: start Roc Bundle (id=3)
-info:   $ /nix/store/krc90wzmv2mkax5hp8zrpi2y5phnqsvx-roc-nightly-2026-10-06-c34079d/bin/roc
-info:       bundle
-info:       platform/main.roc
-info:       platform/Build.roc
-info:       platform/Host.roc
-info:       platform/Log.roc
-info:       platform/targets/x64musl/crt1.o
-info:       platform/targets/x64musl/libc.a
-info:       platform/targets/x64musl/libcompiler_rt.a
-info:       platform/targets/x64musl/libzigc.a
-info:       platform/targets/x64musl/libhost.a
-Created: cxyAQTomLcUFHczRwdmGxKT12EB2tpdgownuhxhJfGu.tar.zst
-Compressed size: 1708119 bytes
-Uncompressed size: 7427024 bytes
-Compression ratio: 4.35:1
-Time: 55 ms
-info: done  Roc Bundle
-info: all tasks finished
+# roc run ./scripts/publish.roc
+nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
 ```
 
-## Bootstrap from scratch, Build & Run.
+## Bootstrap from scratch.
 
 ```sh
-# Install zig 0.16.0 & roc nightly-2026-10-06-c34079d
-# Note: we also depend on libc.
-# ...
+# compile self from scratch
+./scripts/ci.sh
 
-# for x64musl fetch; crt1.o,libc.a,libcompiler_rt.a,libzigc.a
-# (these are in the vendor folder)
-# then... place them here... platform/targets/x64musl/
-cp vendor/targets/x64musl/* platform/targets/x64musl/
-
-# build the platform
-zig build-lib -fPIC -OReleaseSafe -target x86_64-linux-musl \
-  -lc \
-  host/host.zig -femit-bin=platform/targets/x64musl/libhost.a
-
-# build & run the demo build app...
-roc run examples/hello_build.roc
-#info: parallel build demo
-#info: wave: 5 tasks in parallel
-#info: start Compile A (2s) (id=1)
-#info: start Compile B (2s) (id=2)
-#info: start Compile C (2s) (id=3)
-#info: start Lint (1s) (id=4)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       2
-#info: start Pack assets (1s) (id=5)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       2
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       2
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       1
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       1
-#info: done  Compile A (2s)
-#info: done  Compile B (2s)
-#info: done  Compile C (2s)
-#info: done  Lint (1s)
-#info: done  Pack assets (1s)
-#info: wave: 1 tasks in parallel
-#info: start Link app (1s) (id=10)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       1
-#info: done  Link app (1s)
-#info: wave: 1 tasks in parallel
-#info: start Package (1s) (id=20)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       1
-#info: done  Package (1s)
-#info: wave: 1 tasks in parallel
-#info: start Test (1s) (id=30)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/sleep
-#info:       1
-#info: done  Test (1s)
-#info: wave: 1 tasks in parallel
-#info: start Report (id=40)
-#info:   $ /nix/store/xjl7p8dvyk2j53kqf7f43kdj4ypbxz7g-coreutils-9.11/bin/echo
-#info:       BUILD OK
-#BUILD OK
-#info: done  Report
-#info: all tasks finished
+# self-hosted compile self
+roc run scripts/ci.roc
 ```
 
 ## Features / Roadmap
@@ -193,9 +111,9 @@ roc run examples/hello_build.roc
 - [ ] Tasks have dependencies (without passing around ids; aka a nice user interface experience.)
 - [x] It schedules concurrently (wave based)
 - [ ] It schedules concurrently (eager based)
-- [ ] It has memory limits via cli flag `--max-memory=16gb`
-- [ ] It has memory budgets per task (so they can be scheduled or cancelled appropriately).
-- [ ] It schedules with parallel task limits `--max-parallel=4`
+- [x] It has memory limits via cli flag `--max-memory=16gb`
+- [x] It has memory budgets per task (so they can be scheduled or cancelled appropriately).
+- [x] It schedules with parallel task limits `--max-parallel=4`
 - [ ] It has a lock file
 - [ ] It has declarative reproduceable environments
 - [ ] It has sandboxing to avoid being influced by unwanted side-effects

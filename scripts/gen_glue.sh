@@ -1,6 +1,13 @@
 #!/usr/bin/env sh
 set -eu
 
+#
+# 1) Parse the git commit id from: `roc --version` -> "Roc compiler version nightly-2026-10-15-38e6c42"
+# 2) Fetch https://raw.githubusercontent.com/roc-lang/roc/${COMMIT}/src/glue/src/ZigGlue.roc
+# 3) Write it to .cache/glue/${commit}/ZigGlue.roc
+# 4) Run roc glue
+#
+
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 

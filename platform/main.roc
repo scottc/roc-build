@@ -1,6 +1,6 @@
 platform "build"
     requires {} { main! : List(Str) => Try({}, [Exit(I32), ..]) }
-    exposes [Build, Log]
+    exposes [Build, BuildCmd, Log, Mem]
     packages {}
     provides { "roc_main": main_for_host! }
     hosted {
@@ -29,8 +29,10 @@ platform "build"
         # arm64win: { inputs: ["host.lib", app] },
     }
 
+import Mem
 import Host
 import Build
+import BuildCmd
 import Log
 
 main_for_host! : List(Str) => I32
