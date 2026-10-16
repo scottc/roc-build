@@ -12,15 +12,17 @@ Host := [].{
         Cmd(CmdSpec),
     ]
 
+    # In Host
     Task : {
         id : TaskId,
         depends_on : List(TaskId),
-        inputs : List(Str),
+        inputs : List(Str),      # keep for future hashing/caching
         outputs : List(Str),
         action : Action,
         description : Str,
         cwd : Str,
         env : List((Str, Str)),
+        memory_budget : U64,     # NEW
     }
 
     BuildGraph : {

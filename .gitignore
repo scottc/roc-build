@@ -1,3 +1,5 @@
 platform/targets/
 *.tar.zst
 .blueprint/
+host/roc_platform_abi.zig
+.cache/

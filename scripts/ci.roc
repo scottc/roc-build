@@ -1,5 +1,5 @@
 app [main!] {
-	pf: platform "../platform/main.roc",
+    pf: platform "../platform/main.roc",
 }
 
 import pf.Build
@@ -7,95 +7,64 @@ import pf.Log
 
 main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
-	Log.info!("Build host, build & bundle platform.")
+    Log.info!("CI: glue → host → bundle")
 
-	# pwd_id = 0
-	# pwd = Build.cmd({
-	# 	id: pwd_id,
-	# 	depends_on: [],
-	# 	inputs: [],
-	# 	outputs: [],
-	# 	program: "pwd",
-	# 	args: [],
-	# 	description: "Print working directory",
-	# 	cwd: "",
-	# 	env: [],
-	# })
+    # 0) Generate ABI from current platform/Host types
+    gen_glue = Build.cmd_simple({
+        program: "roc",
+        args: [
+            "glue",
+            # Resolve ZigGlue via env in a small wrapper, or pass absolute path.
+            # Simplest honest option: require ROC_ZIG_GLUE in the environment.
+            "${/* see note below */}",
+        ],
+        description: "Generate host/roc_platform_abi.zig",
+        depends_on: [],
+        cwd: "",
+        env: [],
+    })
 
-	cp_id = 1
-	cp = Build.cmd({
-		id: cp_id,
-		depends_on: [
-		    # pwd_id
-		],
-		inputs: [
-      #       "vendor/targets/x64musl/crt1.o",
-      #       "vendor/targets/x64musl/libc.a",
-      #       "vendor/targets/x64musl/libcompiler_rt.a",
-		    # "vendor/targets/x64musl/libzigc.a",
-		],
-		outputs: [
-		    # "platform/targets/x64musl/crt1.o",
-      #       "platform/targets/x64musl/libc.a",
-      #       "platform/targets/x64musl/libcompiler_rt.a",
-      #       "platform/targets/x64musl/libzigc.a",
-		],
-		program: "cp",
-		args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
-		description: "Install platform dependencies",
-		cwd: "",
-		env: [],
-	})
+    # Prefer a shell one-liner so path resolution stays in one place:
+    gen_glue = Build.cmd_simple({
+        program: "sh",
+        args: ["-c", "scripts/gen_glue.sh"],
+        description: "Generate host/roc_platform_abi.zig",
+        depends_on: [],
+        cwd: "",
+        env: [],
+    })
 
-	zig_build_lib_id = 2
-	zig_build_lib = Build.cmd({
-		id: zig_build_lib_id,
-		depends_on: [],
-		inputs: [
-    		# "host/host.zig",
-    		# "host/roc_platform_abi.zig"
-		],
-		outputs: [
-		    # "platform/targets/x64musl/libhost.a"
-		],
-		program: "zig",
-		args: [
-		    "build-lib",
-			"-fPIC",
-			"-OReleaseSafe",
-			"-target", "x86_64-linux-musl",
-			"-lc",
-			"host/host.zig",
-			"-femit-bin=platform/targets/x64musl/libhost.a"
-		],
-		description: "Build Zig Host",
-		cwd: "",
-		env: [],
-	})
+    cp = Build.cmd_simple({
+        program: "cp",
+        args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
+        description: "Install platform dependencies",
+        depends_on: [],
+        cwd: "",
+        env: [],
+    })
 
-	# roc bundle platform/main.roc platform/targets/x64musl/*
-	roc_bundle_id = 3
-	roc_bundle = Build.cmd({
-		id: roc_bundle_id,
-		depends_on: [cp_id, zig_build_lib_id],
-		inputs: [
-      #       "platform/main.roc",
-      #       "platform/Build.roc",
-      #       "platform/Host.roc",
-		    # "platform/Log.roc",
-		    # "platform/targets/x64musl/crt1.o",
-      #       "platform/targets/x64musl/libc.a",
-      #       "platform/targets/x64musl/libcompiler_rt.a",
-      #       "platform/targets/x64musl/libzigc.a",
-      #       "platform/targets/x64musl/libhost.a",
-		],
-		outputs: [
-		    # "CXzHUmjdummJLMyox6aVnjE5xEL3cC1BKm7nijtgaCVY.tar.zst"
-		],
-		program: "roc",
-		args: [
-		    "bundle",
-			"platform/main.roc",
+    zig_build_lib = Build.cmd_simple({
+        program: "zig",
+        args: [
+            "build-lib",
+            "-fPIC",
+            "-OReleaseSafe",
+            "-target", "x86_64-linux-musl",
+            "-lc",
+            "host/host.zig",
+            "-femit-bin=platform/targets/x64musl/libhost.a",
+        ],
+        description: "Build Zig Host",
+        depends_on: [0],   # after glue
+        cwd: "",
+        env: [],
+    })
+
+    roc_bundle = Build.cmd_simple({
+        program: "roc",
+        args: [
+            "bundle",
+            "platform/main.roc",
             "platform/Build.roc",
             "platform/Host.roc",
             "platform/Log.roc",
@@ -104,27 +73,28 @@ main! = |_args| {
             "platform/targets/x64musl/libcompiler_rt.a",
             "platform/targets/x64musl/libzigc.a",
             "platform/targets/x64musl/libhost.a",
-		],
-		description: "Roc Bundle",
-		cwd: "",
-		env: [],
-	})
+        ],
+        description: "Roc Bundle",
+        depends_on: [1, 2],  # cp + zig (indices after you order the list)
+        cwd: "",
+        env: [],
+    })
 
-	graph = Build.graph([
-	    # pwd,
-		cp,
-		zig_build_lib,
-		roc_bundle,
-	])
+    graph = Build.graph([
+        gen_glue,       # 0
+        cp,             # 1
+        zig_build_lib,  # 2
+        roc_bundle,     # 3
+    ])
 
-	match Build.run!(graph) {
-		Ok({}) => {
-			Log.info!("all tasks finished")
-			Ok({})
-		}
-		Err(BuildFailed(msg)) => {
-			Log.error!(msg)
-			Err(Exit(1))
-		}
-	}
+    match Build.run!(graph) {
+        Ok({}) => {
+            Log.info!("all tasks finished")
+            Ok({})
+        }
+        Err(BuildFailed(msg)) => {
+            Log.error!(msg)
+            Err(Exit(1))
+        }
+    }
 }

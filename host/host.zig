@@ -42,6 +42,7 @@ fn hostedRunGraph(arg0: abi.HostRun_graphArgs) callconv(.c) abi.HostRun_graphRes
         return runGraphErr(switch (err) {
             error.TaskFailed => "build task failed",
             error.CycleOrStuck => "dependency cycle or stuck graph",
+            error.OutOfMemoryBudget => "out of memory budget",
             else => "build failed",
         }, roc_host);
     };
@@ -244,10 +245,11 @@ const ZigTask = struct {
     args: []const []const u8,
     description: []const u8,
     cwd: []const u8,
+    memory_budget: u64,
+    // env can be added later when you wire it through
 };
 
 fn decodeTask(t: abi.HostRun_graphArg0Tasks, arena: std.mem.Allocator) !ZigTask {
-    // Single-tag Action [Cmd(...)] is flattened to { program, args }.
     const program = try arena.dupe(u8, t.action.program.asSlice());
     const roc_args = t.action.args.items();
     const args = try arena.alloc([]const u8, roc_args.len);
@@ -262,6 +264,7 @@ fn decodeTask(t: abi.HostRun_graphArg0Tasks, arena: std.mem.Allocator) !ZigTask 
         .args = args,
         .description = try arena.dupe(u8, t.description.asSlice()),
         .cwd = try arena.dupe(u8, t.cwd.asSlice()),
+        .memory_budget = t.memory_budget,
     };
 }
 
@@ -272,6 +275,9 @@ fn decodeTask(t: abi.HostRun_graphArg0Tasks, arena: std.mem.Allocator) !ZigTask 
 fn runZigGraph(tasks: []const ZigTask, allocator: std.mem.Allocator) !void {
     const n = tasks.len;
     if (n == 0) return;
+
+    const max_memory: u64 = 16 * 1024 * 1024 * 1024; // TODO: parse --max-memory= from argv later
+    var used_memory: u64 = 0;
 
     var remaining = try allocator.alloc(u32, n);
     defer allocator.free(remaining);
@@ -313,10 +319,29 @@ fn runZigGraph(tasks: []const ZigTask, allocator: std.mem.Allocator) !void {
     while (done < n) {
         if (ready.items.len == 0) return error.CycleOrStuck;
 
-        // Run this whole ready wave in parallel
-        const wave = try allocator.dupe(usize, ready.items);
-        defer allocator.free(wave);
-        ready.clearRetainingCapacity();
+        // Select a subset of the ready wave that fits in remaining memory
+        var wave: std.ArrayList(usize) = .empty;
+        defer wave.deinit(allocator);
+
+        var i: usize = 0;
+        while (i < ready.items.len) {
+            const idx = ready.items[i];
+            const budget = tasks[idx].memory_budget;
+            const cost = if (budget == 0) 0 else budget; // 0 = unconstrained
+
+            if (used_memory + cost <= max_memory or cost == 0) {
+                try wave.append(allocator, idx);
+                used_memory += cost;
+                _ = ready.orderedRemove(i);
+            } else {
+                i += 1;
+            }
+        }
+
+        if (wave.items.len == 0) {
+            // Nothing fits — either raise max_memory or a single task is too big
+            return error.OutOfMemoryBudget;
+        }
 
         var results = try allocator.alloc(WorkerResult, wave.len);
         defer allocator.free(results);

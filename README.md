@@ -1,16 +1,17 @@
 # Roc-Build
 
-A general purpose parallel task runner.
+A general purpose reproduceable parallel task runner, that is 100% fully user configured in roc-lang.
 
-That was originally designed as a concurrent build system for roc, to build non-trivial roc platforms & apps, as a replacement for build.zig.
+That was originally designed as a concurrent build system for roc, to build non-trivial roc platforms & apps, as a replacement for `build.zig` & `flake.nix`.
 
 ## About
 
-Build roc lets you build your app and/or platform concurrently with declarative dependency graph.
+Build roc lets you build your app and/or platform concurrently with a declarative dependency graph, in a reproduceable declarative environment.
 
-I built this to service the real-world use case that is the `scottc/godot-roc` project.
+I built this to service the real-world use case are the `scottc/godot-roc` & `scottc/survivepg` projects.
 
 ## Example
+
 ```roc
 app [main!] {
 	pf: platform "https://github.com/scottc/roc-build/releases/download/v0.0.4-alpha/3LfMjdvzZ7EzqZeffgjSJnKFtqn1BTN4b7mzRbHZ4CqP.tar.zst",
@@ -66,6 +67,7 @@ info: all tasks finished
 ```
 
 ## Requirements
+
 - `zig 0.16.0` (if building this build platform from source)
 - `libc` runtime dependency (app development)
 - `roc` (app development)
@@ -186,16 +188,29 @@ roc run examples/hello_build.roc
 
 ## Features / Roadmap
 
-- [x] It runs the graph
-- [x] It runs concurrently (wave based)
-- [ ] It runs concurrently (eager based)
-- [ ] It hashes
+- [x] It accepts cli args, stdin/stdout & follows cli conventions to be used in a wider pipeline & toolchain.
+- [x] It runs a task graph
+- [ ] Tasks have dependencies (without passing around ids; aka a nice user interface experience.)
+- [x] It schedules concurrently (wave based)
+- [ ] It schedules concurrently (eager based)
+- [ ] It has memory limits via cli flag `--max-memory=16gb`
+- [ ] It has memory budgets per task (so they can be scheduled or cancelled appropriately).
+- [ ] It schedules with parallel task limits `--max-parallel=4`
+- [ ] It has a lock file
+- [ ] It has declarative reproduceable environments
+- [ ] It has sandboxing to avoid being influced by unwanted side-effects
+- [ ] It has shells you can enter
+- [ ] It hashes automatically (no need to specify exact files, for a nice user experience)
+- [ ] It has build commands with optional fields... only specify what you need, for a nice user experience.
 - [ ] It caches
+- [ ] It's composable, and can download hashed dependencies into a cache.
+- [ ] It works across many platforms..
+- [ ] It can take nix flakes as inputs.
 - [ ] It has a github actions CI intergration template & guide.
 
 ## Supported Targets
 
-- [x] x86_64-linux-musl
+- [x] x64musl
 - [ ] ...
 - [ ] ...
 - [ ] ...

@@ -8,7 +8,7 @@ config = [
 	Shell("default", [Use("dev-env")]),
 	Environment("dev-env", [
     	Overlays(["roc"]),
-    	Command("roc", "rocpkgs.nightly-2026-10-12-2664a27"),
+    	Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
   			Tools([
 				"zig",
 			]),
@@ -17,7 +17,7 @@ config = [
 		"ci-env",
 		[
 			Overlays(["roc"]),
-			Command("roc", "rocpkgs.nightly-2026-10-12-2664a27"),
+			Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
 			Tools([
 				"zig",
 			]),
@@ -33,7 +33,7 @@ config = [
 		"gh-publish-env",
 		[
 			Overlays(["roc"]),
-			Command("roc", "rocpkgs.nightly-2026-10-12-2664a27"),
+			Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
 			Tools([
 			    "gh",
     			"zig",
