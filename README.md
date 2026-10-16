@@ -25,7 +25,7 @@ import pf.Log
 main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
     #limits = parse_limits(args) # { max_memory, max_parallel }
-    Log.info!("CI: gen glue → static test host → static test platform")
+    Log.info!("CI: gen glue -> static test host -> static test platform")
 
     gen_glue = BuildCmd.new({
         program: "sh",
@@ -85,23 +85,17 @@ main! = |_args| {
 - `libc` runtime dependency (app development)
 - `roc` (app development)
 
-## Build this platform, with this platform!
-
-Note: nix & blueprint, is optional... and will be replaced with self-hosted implementations.
-
-```sh
-# roc run ./scripts/publish.roc
-nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
-```
-
-## Bootstrap from scratch.
+## Bootstrap & Build from scratch.
 
 ```sh
 # compile self from scratch
-./scripts/ci.sh
+./scripts/publish.sh
 
-# self-hosted compile self
-roc run scripts/ci.roc
+# OR self-hosted compile self
+roc run scripts/publish.roc
+
+# OR self-hosted with dependencies via nix
+nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
 ```
 
 ## Features / Roadmap
