@@ -25,6 +25,7 @@ config = [
 	),
 	Task("ci", [
 	    Use("ci-env"),
+		#Run(["roc", "run", "scripts/ci.do-not-use.roc", "--"])
 		Run(["sh", "-c", "scripts/ci.sh"])
 	]),
 	Environment(
@@ -40,6 +41,7 @@ config = [
 	),
 	Task("publish", [
 	    Use("gh-publish-env"),
-		Run(["roc", "run", "scripts/publish.roc", "--"])
+		#Run(["roc", "run", "scripts/publish.do-not-use.roc", "--"])
+		Run(["sh", "-c", "scripts/publish.sh"])
 	]),
 ]
