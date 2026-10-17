@@ -1,5 +1,5 @@
-platform/targets/
-*.tar.zst
 .blueprint/
-host/roc_platform_abi.zig
 .cache/
+bundle-out/
+host/roc_platform_abi.zig
+platform/targets-out/

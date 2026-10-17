@@ -14,7 +14,7 @@ platform "build"
         "roc_path_exists": Host.path_exists!,
     }
     targets: {
-        inputs_dir: "targets/",
+        inputs_dir: "targets-out/",
 
         x64musl: { inputs: ["crt1.o", "libhost.a", app, "libc.a", "libzigc.a", "libcompiler_rt.a"] },
         #x64musl: { inputs: ["libhost.a", app] },

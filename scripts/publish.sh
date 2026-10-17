@@ -4,25 +4,31 @@
 # Publish: gen glue → build host → bundle platform
 #
 
-./gen_glue.sh
+mkdir -p platform/targets-out/x64musl/
+mkdir -p bundle-out/
+sh -c scripts/gen_glue.sh
+cp -a vendor/targets/x64musl/. platform/targets-out/x64musl/
 
-cp -a vendor/targets/x64musl/. platform/targets/x64musl/
-
-zig build-lib \
-host/host.zig \
+zig build-lib host/host.zig \
+-femit-bin=platform/targets-out/x64musl/libhost.a \
 -fPIC \
 -OReleaseSafe \
 -target x86_64-linux-musl \
--lc \
--femit-bin=platform/targets/x64musl/libhost.a
+-lc
+
+cd platform
 
 roc bundle \
-platform/main.roc \
-platform/Build.roc \
-platform/Host.roc \
-platform/Log.roc \
-platform/targets/x64musl/crt1.o \
-platform/targets/x64musl/libc.a \
-platform/targets/x64musl/libcompiler_rt.a \
-"platform/targets/x64musl/libzigc.a \
-platform/targets/x64musl/libhost.a
+main.roc \
+Build.roc \
+Host.roc \
+Log.roc \
+targets-out/x64musl/crt1.o \
+targets-out/x64musl/libc.a \
+targets-out/x64musl/libcompiler_rt.a \
+targets-out/x64musl/libzigc.a \
+targets-out/x64musl/libhost.a
+
+cd ../
+
+mv platform/*.tar.zst bundle-out/
