@@ -13,6 +13,14 @@ main! = |_args| {
     Log.info!("CI:")
     Log.info!("gen glue -> static test host -> static test platform")
 
+    # some reason, ci fails without targets-out dir?
+    mkdir_targets_out = BuildCmd.new({
+        program: "mkdir",
+        args: ["-p", "platform/targets-out/x64musl/"],
+        description: "Ensure 'platform/targets-out/x64musl/' dir."
+    })
+    .with_memory(Mem.gb(1))
+
     gen_glue = BuildCmd.new({
         program: "sh",
         args: ["-c", "scripts/gen_glue.sh"],
@@ -40,7 +48,7 @@ main! = |_args| {
             args: ["test", "platform/main.roc"],
             description: "Build Roc Host",
         })
-        .depends_on([]) # gen_glue
+        .depends_on([mkdir_targets_out]) # gen_glue
         .with_memory(Mem.gb(1))
 
     roc_test_self = BuildCmd.new({
@@ -61,6 +69,7 @@ main! = |_args| {
 
     graph = Build.graph_with(
         [
+            mkdir_targets_out,
             gen_glue,
             zig_test,
             roc_test_platform,
