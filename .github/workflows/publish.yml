@@ -1,12 +1,12 @@
-# .github/workflows/ci.yml
-name: CI
+# .github/workflows/publish.yml
+name: Publish
 
 on:
-  push:
-    branches: [master]
-  pull_request:
+  #push:
+  #  branches: [master]
+  #pull_request:
   workflow_dispatch:
-    inputs:
+    #inputs:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,7 +15,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 

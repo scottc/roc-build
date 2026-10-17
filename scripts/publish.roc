@@ -16,6 +16,15 @@ main! = |_args| {
         description: "Generate host/roc_platform_abi.zig",
     })
 
+    # TODO: ensure directory
+    # ── ✗ missing files directory ───────────────────────────────────────────────────
+    # The platform targets configuration uses inputs directory `targets/`, but that
+    # directory does not exist.
+    # Platform: /home/runner/work/roc-build/roc-build/platform/main.roc
+    # Expected directory: /home/runner/work/roc-build/roc-build/platform/targets/
+    # Create this directory or update the platform `targets` section. Builds cannot proceed until declared target inputs exist.
+    # ── 1 error and 0 warnings ─────────────────────────────────────── scripts/ci.roc
+    # blueprint: task ci exited with code 1
     cp = BuildCmd.new({
         program: "cp",
         args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
