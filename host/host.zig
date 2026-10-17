@@ -19,9 +19,8 @@ var g_environ: std.process.Environ = .empty;
 // ---------------------------------------------------------------------------
 
 fn hostedRunGraph(arg0: abi.HostRun_graphArgs) callconv(.c) abi.HostRun_graphResult {
-    // TODO: from args
-    const max_memory: u64 = 2 * 1024 * 1024 * 1024;
-    const max_parallel_tasks: u64 = 4;
+    const max_memory: u64 = arg0.max_memory;
+    const max_parallel_tasks: u64 = arg0.max_parallel;
 
     const roc_host = g_roc_host.?;
     defer arg0.decref(roc_host);
