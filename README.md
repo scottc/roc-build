@@ -87,15 +87,16 @@ main! = |_args| {
 
 ## Bootstrap & Build from scratch.
 
+> [!NOTE]
+> Q: Why not self-hosted build?
+> A: Because of chicken & egg problem, the zig binaries need to exist prior to being able to run the platform, and we'd want to use the platform to orchistrate the zig build...
+>
+> Q: Yeah, but why not just use a previous zig binary?
+> A: Then there is a -1 feature lag footgun, that can be confusing, it's better to just go without the permenent footgun and use another build system, and thus a shell script as build system. (Which I personally find to be awful; a necessary "evil".)
+
 ```sh
 # compile self from scratch
 ./scripts/publish.sh
-
-# OR self-hosted compile self
-roc run scripts/publish.roc
-
-# OR self-hosted with dependencies via nix
-nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
 ```
 
 ## Features / Roadmap
