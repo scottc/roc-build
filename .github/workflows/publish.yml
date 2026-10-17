@@ -28,6 +28,8 @@ jobs:
       # - uses: DeterminateSystems/flakehub-cache-action@main
 
       - name: CI inside flake
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
 

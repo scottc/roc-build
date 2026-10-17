@@ -89,10 +89,12 @@ main! = |_args| {
 
 > [!NOTE]
 > Q: Why not self-hosted build?
+> 
 > A: Because of chicken & egg problem, the zig binaries need to exist prior to being able to run the platform, and we'd want to use the platform to orchistrate the zig build...
 >
 > Q: Yeah, but why not just use a previous zig binary?
-> A: Then there is a -1 feature lag footgun, that can be confusing, it's better to just go without the permenent footgun and use another build system, and thus a shell script as build system. (Which I personally find to be awful; a necessary "evil".)
+> 
+> A: Then there is a -1 feature lag footgun, that can be confusing, it's better to just go without the permenent footgun and use another build system, and thus a shell script as build system, or perhaps zig build. (Which I personally find to be awful; a necessary "evil".)
 
 ```sh
 # compile self from scratch
