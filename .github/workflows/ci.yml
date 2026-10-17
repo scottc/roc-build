@@ -29,7 +29,7 @@ jobs:
 
       - name: CI inside flake
         shell: bash
-        run: nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run publish
+        run: nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- run ci
 
       # Optional artefacts (enable when you want them; free tier has storage caps)
       # - name: Upload bundle-out

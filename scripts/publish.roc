@@ -57,6 +57,9 @@ main! = |_args| {
         })
         .depends_on([cp, zig_build_lib])
 
+    # TODO: write into bundle-out/
+    # TODO: GHA to publish a release.
+
     graph = Build.graph([gen_glue, cp, zig_build_lib, roc_bundle])
 
     match Build.run!(graph) {

@@ -10,7 +10,8 @@ import pf.Log
 main! : List(Str) => Try({}, [Exit(I32)])
 main! = |_args| {
     #limits = parse_limits(args) # { max_memory, max_parallel }
-    Log.info!("CI: gen glue → static test host → static test platform")
+    Log.info!("CI:")
+    Log.info!("gen glue -> static test host -> static test platform")
 
     gen_glue = BuildCmd.new({
         program: "sh",
@@ -19,40 +20,56 @@ main! = |_args| {
     })
     .with_memory(Mem.gb(1))
 
-    cp = BuildCmd.new({
-        program: "cp",
-        args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
-        description: "Install platform dependencies",
-    })
-    .with_memory(Mem.mb(256))
+    # cp = BuildCmd.new({
+    #     program: "cp",
+    #     args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
+    #     description: "Install platform dependencies",
+    # })
+    # .with_memory(Mem.mb(256))
 
-    zig_build_lib =
-        BuildCmd.new({
+    zig_test = BuildCmd.new({
             program: "zig",
-            args: [
-                "build-lib",
-                "-fPIC",
-                "-OReleaseSafe",
-                "-target", "x86_64-linux-musl",
-                "-lc",
-                "host/host.zig",
-                "-femit-bin=platform/targets/x64musl/libhost.a",
-            ],
+            args: ["test", "host/host.zig"],
             description: "Build Zig Host",
         })
         .depends_on([gen_glue])
         .with_memory(Mem.gb(1))
 
-    # TODO: zig test
-    # TODO: roc test
-    # TODO: roc check
-    # TODO: roc build an example...
+    roc_test_platform = BuildCmd.new({
+            program: "roc",
+            args: ["test", "platform/main.roc"],
+            description: "Build Roc Host",
+        })
+        .depends_on([]) # gen_glue
+        .with_memory(Mem.gb(1))
+
+    roc_test_self = BuildCmd.new({
+            program: "roc",
+            args: ["test", "scripts/ci.roc"],
+            description: "Build Roc Host",
+        })
+        .depends_on([]) # gen_glue
+        .with_memory(Mem.gb(1))
+
+    roc_test_publish = BuildCmd.new({
+            program: "roc",
+            args: ["test", "scripts/publish.roc"],
+            description: "Build Roc Host",
+        })
+        .depends_on([]) # gen_glue
+        .with_memory(Mem.gb(1))
 
     graph = Build.graph_with(
-        [gen_glue, cp, zig_build_lib],
+        [
+            gen_glue,
+            zig_test,
+            roc_test_platform,
+            roc_test_self,
+            roc_test_publish
+        ],
         {
-            max_memory: Mem.gb(2), # limits.max_memory,   # e.g. Mem.gb(2) from --memory=2gb
-            max_parallel: 4, # limits.max_parallel,
+            max_memory: Mem.gb(6), #TODO: Match GHA
+            max_parallel: 8, #TODO: Match GHA
         },
     )
 
