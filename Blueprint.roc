@@ -25,7 +25,7 @@ config = [
 	),
 	Task("ci", [
 	    Use("ci-env"),
-		Run(["roc", "run", "scripts/ci.roc", "--"])
+		Run(["sh", "-c", "scripts/ci.sh"])
 	]),
 	Environment(
 		"gh-publish-env",

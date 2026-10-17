@@ -1,4 +1,10 @@
 app [main!] {
+    # TODO: we cannot build self-hosted
+    # because we need the zig binaries to exist before we can run
+    # chicken & egg bootstrapping problem
+    # We could use a previously built zig binaries,
+    # OR! we can compile the current version with zig...
+    # AND THEN... we can continue.
     pf: platform "../platform/main.roc",
 }
 
@@ -30,7 +36,7 @@ main! = |_args| {
 
     # cp = BuildCmd.new({
     #     program: "cp",
-    #     args: ["-a", "vendor/targets/x64musl/.", "platform/targets/x64musl/"],
+    #     args: ["-a", "vendor/targets/x64musl/.", "platform/targets-out/x64musl/"],
     #     description: "Install platform dependencies",
     # })
     # .with_memory(Mem.mb(256))
