@@ -354,9 +354,8 @@ fn runZigGraph(
 
         if (wave.items.len == 0) {
             if (ready.items.len > 0) {
-                // Something ready but blocked on resources — wait is wrong in pure wave
-                // model; better switch to: run what we can, or error if nothing ever fits
-                return error.OutOfMemoryBudget;
+                // blocked on max_parallel and/or max_memory
+                return error.ResourceLimitBlocked;
             }
             return error.CycleOrStuck;
         }
@@ -398,7 +397,8 @@ fn runZigGraph(
             const task = tasks[idx];
             done += 1;
 
-            // Release this task's memory reservation
+            // Release slots this task held
+            running -= 1;
             if (task.memory_budget != 0) {
                 used_memory -= task.memory_budget;
             }
