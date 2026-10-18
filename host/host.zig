@@ -45,7 +45,8 @@ fn hostedRunGraph(arg0: abi.HostRun_graphArgs) callconv(.c) abi.HostRun_graphRes
         return runGraphErr(switch (err) {
             error.TaskFailed => "build task failed",
             error.CycleOrStuck => "dependency cycle or stuck graph",
-            error.OutOfMemoryBudget => "out of memory budget",
+            error.ResourceLimitBlocked => "resource limit blocked (memory or parallel)",
+            error.TaskExceedsMemoryLimit => "task memory budget exceeds max_memory",
             else => "build failed",
         }, roc_host);
     };
