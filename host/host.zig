@@ -512,7 +512,7 @@ fn runZigGraph(
 
 fn resolveOnPath(arena: std.mem.Allocator, prog: []const u8) ![:0]const u8 {
     if (std.mem.indexOfScalar(u8, prog, '/') != null) {
-        return arena.dupeZ(u8, prog);
+        return arena.dupeSentinel(u8, prog, 0);
     }
 
     var path_val: ?[]const u8 = null;
@@ -554,7 +554,7 @@ fn execCmd(task: ZigTask, allocator: std.mem.Allocator) !void {
     const argv_z = try arena.allocSentinel(?[*:0]const u8, 1 + task.args.len, null);
     argv_z[0] = prog_z.ptr;
     for (task.args, 0..) |arg, i| {
-        argv_z[i + 1] = try arena.dupeZ(u8, arg);
+        argv_z[i + 1] = try arena.dupeSentinel(u8, arg, 0);
     }
 
     std.log.info("  $ {s}", .{prog_z});
@@ -571,7 +571,7 @@ fn execCmd(task: ZigTask, allocator: std.mem.Allocator) !void {
 
     if (pid == 0) {
         if (task.cwd.len > 0) {
-            const cwd_z = arena.dupeZ(u8, task.cwd) catch std.c._exit(127);
+            const cwd_z = arena.dupeSentinel(u8, task.cwd, 0) catch std.c._exit(127);
             if (std.c.chdir(cwd_z) != 0) std.c._exit(127);
         }
 
