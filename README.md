@@ -97,6 +97,7 @@ main! = |_args| {
 > A: Then there is a -1 feature lag footgun, that can be confusing, it's better to just go without the permenent footgun and use another build system, and thus a shell script as build system, or perhaps zig build. (Which I personally find to be awful; a necessary "evil".)
 
 ```sh
+nix run github:lukewilliamboswell/roc-blueprint/0.5.0 -- shell
 # compile self from scratch
 ./scripts/publish.sh
 ```

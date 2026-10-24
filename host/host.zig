@@ -31,7 +31,7 @@ fn hostedRunGraph(arg0: abi.HostRun_graphArgs) callconv(.c) abi.HostRun_graphRes
 
     const roc_tasks = arg0.tasks.items();
     const zig_tasks = arena.alloc(ZigTask, roc_tasks.len) catch {
-        return runGraphErr("oom", roc_host);
+        return runGraphErr("oom allocating task list", roc_host);
     };
 
     for (roc_tasks, 0..) |t, i| {
@@ -41,14 +41,14 @@ fn hostedRunGraph(arg0: abi.HostRun_graphArgs) callconv(.c) abi.HostRun_graphRes
     }
 
     runZigGraph(zig_tasks, max_memory, max_parallel_tasks, arena) catch |err| {
-        std.log.err("runZigGraph failed: {s}", .{@errorName(err)});
-        return runGraphErr(switch (err) {
-            error.TaskFailed => "build task failed",
-            error.CycleOrStuck => "dependency cycle or stuck graph",
-            error.ResourceLimitBlocked => "resource limit blocked (memory or parallel)",
-            error.TaskExceedsMemoryLimit => "task memory budget exceeds max_memory",
+        const msg = switch (err) {
+            error.TaskFailed => "build task failed (see logs for task id / exit status)",
+            error.CycleOrStuck => "dependency cycle or stuck graph (no ready tasks and none running)",
+            error.TaskExceedsMemoryLimit => "a single task memory_budget exceeds max_memory even when run alone (see logs)",
             else => "build failed",
-        }, roc_host);
+        };
+        std.log.err("runZigGraph failed: {s} ({s})", .{ @errorName(err), msg });
+        return runGraphErr(msg, roc_host);
     };
 
     return runGraphOk();
@@ -249,6 +249,11 @@ const ZigTask = struct {
     memory_budget: u64,
 };
 
+fn taskLabel(t: ZigTask) []const u8 {
+    if (t.description.len > 0) return t.description;
+    return t.program;
+}
+
 fn decodeTask(t: abi.HostRun_graphArg0Tasks, arena: std.mem.Allocator) !ZigTask {
     // Single-tag Action [Cmd(...)] is flattened to { program, args }.
     const program = try arena.dupe(u8, t.action.program.asSlice());
@@ -270,8 +275,54 @@ fn decodeTask(t: abi.HostRun_graphArg0Tasks, arena: std.mem.Allocator) !ZigTask 
 }
 
 // ---------------------------------------------------------------------------
-// Scheduler (wave-based + memory budgets)
+// Scheduler (continuous queue + memory / parallel budgets)
 // ---------------------------------------------------------------------------
+//
+// Ready tasks sit in a queue. We start as many as fit under max_memory and
+// max_parallel. When a running task finishes we free its budget, unlock
+// dependents, and try to start more.
+//
+// Hard errors only for:
+//   * a single task whose memory_budget > max_memory (cannot ever run)
+//   * dependency cycle / stuck graph
+//   * a task process actually failing
+//
+// Transient "ready but does not fit right now" is NOT an error — we wait
+// for a running task to finish and free resources.
+//
+// Zig 0.16 note: std.Thread.Mutex/Condition were removed (moved under
+// std.Io). This scheduler avoids them by tracking active threads and
+// joining the oldest when it needs a free slot.
+
+const ActiveSlot = struct {
+    thread: std.Thread,
+    task_idx: usize,
+};
+
+fn effectiveLimit(configured: u64) u64 {
+    if (configured == 0) return std.math.maxInt(u64);
+    return configured;
+}
+
+fn warnBudgetHints(task: ZigTask, max_memory: u64) void {
+    const budget = task.memory_budget;
+    if (budget == 0) return;
+    if (max_memory == 0) return;
+
+    const pct_of_global = (budget * 100) / max_memory;
+
+    if (pct_of_global >= 90) {
+        std.log.warn(
+            "task id={d} '{s}' memory_budget={d} is {d}% of max_memory={d} (near limit; may serialize heavily). Prefer ~50-75% of true need.",
+            .{ task.id, taskLabel(task), budget, pct_of_global, max_memory },
+        );
+    } else if (pct_of_global < 5 and max_memory >= 1024 * 1024) {
+        std.log.warn(
+            "task id={d} '{s}' memory_budget={d} is only {d}% of max_memory={d} (massively under budget — consider tightening budgets). Prefer ~50-75% utilization of declared budget.",
+            .{ task.id, taskLabel(task), budget, pct_of_global, max_memory },
+        );
+    }
+}
 
 fn runZigGraph(
     tasks: []const ZigTask,
@@ -279,27 +330,31 @@ fn runZigGraph(
     max_parallel: u64,
     allocator: std.mem.Allocator,
 ) !void {
-    std.log.info("runZigGraph...", .{});
-
-    // max_memory == 0 → treat as very large or query system
-    // max_parallel == 0 → e.g. std.Thread.getCpuCount() or 1
-
-    var used_memory: u64 = 0;
-    var running: usize = 0;
+    std.log.info(
+        "runZigGraph: {d} tasks; max_memory={d} (0=unlimited) max_parallel={d} (0=unlimited)",
+        .{ tasks.len, max_memory, max_parallel },
+    );
 
     const n = tasks.len;
     if (n == 0) return;
 
+    const mem_limit = effectiveLimit(max_memory);
+    const par_limit = effectiveLimit(max_parallel);
+
+    // Preflight: only fail if a single task can never fit, even alone.
+    for (tasks) |t| {
+        if (t.memory_budget != 0 and t.memory_budget > mem_limit) {
+            std.log.err(
+                "task id={d} '{s}' memory_budget={d} exceeds max_memory={d} even if run sequentially; constraint config: max_memory={d} max_parallel={d}",
+                .{ t.id, taskLabel(t), t.memory_budget, max_memory, max_memory, max_parallel },
+            );
+            return error.TaskExceedsMemoryLimit;
+        }
+        warnBudgetHints(t, max_memory);
+    }
+
     var remaining = try allocator.alloc(u32, n);
     defer allocator.free(remaining);
-
-    var id_to_index = std.AutoHashMap(u64, usize).init(allocator);
-    defer id_to_index.deinit();
-
-    for (tasks, 0..) |t, i| {
-        try id_to_index.put(t.id, i);
-        remaining[i] = @intCast(t.depends_on.len);
-    }
 
     var dependents = std.AutoHashMap(u64, std.ArrayList(usize)).init(allocator);
     defer {
@@ -309,6 +364,7 @@ fn runZigGraph(
     }
 
     for (tasks, 0..) |t, i| {
+        remaining[i] = @intCast(t.depends_on.len);
         for (t.depends_on) |dep| {
             const gop = try dependents.getOrPut(dep);
             if (!gop.found_existing) gop.value_ptr.* = .empty;
@@ -322,97 +378,132 @@ fn runZigGraph(
         if (r == 0) try ready.append(allocator, i);
     }
 
+    // Per-task success flag written by worker threads (each index written once).
+    var results = try allocator.alloc(bool, n);
+    defer allocator.free(results);
+    @memset(results, false);
+
+    var active: std.ArrayList(ActiveSlot) = .empty;
+    defer {
+        // On error paths, join any still-running workers so we don't leak threads.
+        for (active.items) |slot| slot.thread.join();
+        active.deinit(allocator);
+    }
+
+    var used_memory: u64 = 0;
     var done: usize = 0;
-    const WorkerResult = struct {
-        ok: bool = false,
-    };
 
     while (done < n) {
-        // Fill wave from ready under BOTH constraints
-        var wave: std.ArrayList(usize) = .empty;
-        defer wave.deinit(allocator);
-
+        // Start every ready task that currently fits under both budgets.
         var i: usize = 0;
         while (i < ready.items.len) {
             const idx = ready.items[i];
-            const budget = tasks[idx].memory_budget;
+            const task = tasks[idx];
+            const budget = task.memory_budget;
 
-            if (budget > max_memory and max_memory != 0)
-                return error.TaskExceedsMemoryLimit;
+            const fits_par = active.items.len < par_limit;
+            const fits_mem = (budget == 0) or (used_memory + budget <= mem_limit);
 
-            const fits_mem = (budget == 0) or (used_memory + budget <= max_memory);
-            const fits_par = (max_parallel == 0) or (running + wave.items.len < max_parallel);
-
-            if (fits_mem and fits_par) {
-                try wave.append(allocator, idx);
-                used_memory += budget;
-                running += 1;
-                _ = ready.orderedRemove(i);
-            } else {
+            if (!(fits_par and fits_mem)) {
                 i += 1;
-            }
-        }
-
-        if (wave.items.len == 0) {
-            if (ready.items.len > 0) {
-                // blocked on max_parallel and/or max_memory
-                return error.ResourceLimitBlocked;
-            }
-            return error.CycleOrStuck;
-        }
-
-        var results = try allocator.alloc(WorkerResult, wave.items.len);
-        defer allocator.free(results);
-        @memset(results, .{});
-
-        const Worker = struct {
-            fn run(task: ZigTask, out: *WorkerResult, alloc: std.mem.Allocator) void {
-                execCmd(task, alloc) catch {
-                    out.ok = false;
-                    return;
-                };
-                out.ok = true;
-            }
-        };
-
-        var threads = try allocator.alloc(?std.Thread, wave.items.len);
-        defer allocator.free(threads);
-        @memset(threads, null);
-
-        std.log.info("wave: {d} tasks in parallel", .{wave.items.len});
-
-        for (wave.items, 0..) |idx, wi| {
-            const task = tasks[idx];
-            const label = if (task.description.len > 0) task.description else "(task)";
-            std.log.info("start {s} (id={d})", .{ label, task.id });
-            threads[wi] = try std.Thread.spawn(.{}, Worker.run, .{ task, &results[wi], allocator });
-        }
-
-        for (threads) |maybe_t| {
-            if (maybe_t) |t| t.join();
-        }
-
-        for (wave.items, 0..) |idx, wi| {
-            if (!results[wi].ok) return error.TaskFailed;
-
-            const task = tasks[idx];
-            done += 1;
-
-            // Release slots this task held
-            running -= 1;
-            if (task.memory_budget != 0) {
-                used_memory -= task.memory_budget;
+                continue;
             }
 
-            const label = if (task.description.len > 0) task.description else "(task)";
-            std.log.info("done  {s}", .{label});
+            _ = ready.orderedRemove(i);
+            if (budget != 0) used_memory += budget;
 
-            if (dependents.getPtr(task.id)) |deps| {
-                for (deps.items) |di| {
-                    remaining[di] -= 1;
-                    if (remaining[di] == 0) {
-                        try ready.append(allocator, di);
-                    }
+            std.log.info(
+                "start id={d} '{s}' budget={d} (running={d}/{d} used_mem={d}/{d} ready_queued={d})",
+                .{
+                    task.id,
+                    taskLabel(task),
+                    budget,
+                    active.items.len + 1,
+                    par_limit,
+                    used_memory,
+                    mem_limit,
+                    ready.items.len,
+                },
+            );
+
+            const thread = try std.Thread.spawn(.{}, struct {
+                fn run(t: ZigTask, out: *bool, alloc: std.mem.Allocator) void {
+                    execCmd(t, alloc) catch {
+                        out.* = false;
+                        return;
+                    };
+                    out.* = true;
+                }
+            }.run, .{ task, &results[idx], allocator });
+
+            try active.append(allocator, .{
+                .thread = thread,
+                .task_idx = idx,
+            });
+        }
+
+        if (active.items.len == 0) {
+            if (ready.items.len == 0) {
+                std.log.err(
+                    "graph stuck: done={d}/{d} ready=0 running=0 (likely dependency cycle). max_memory={d} max_parallel={d}",
+                    .{ done, n, max_memory, max_parallel },
+                );
+                return error.CycleOrStuck;
+            }
+            // Ready work exists but nothing is running. Preflight guarantees
+            // each task fits alone, so this should be unreachable.
+            const idx = ready.items[0];
+            const t = tasks[idx];
+            std.log.err(
+                "internal scheduler error: ready task id={d} '{s}' budget={d} did not start with running=0; max_memory={d} max_parallel={d}",
+                .{ t.id, taskLabel(t), t.memory_budget, max_memory, max_parallel },
+            );
+            return error.TaskExceedsMemoryLimit;
+        }
+
+        // Wait for the oldest running task. (FIFO join — simple, no Mutex needed.)
+        // Ready tasks that did not fit stay queued; after this join frees
+        // budget/slots we loop and try to start them.
+        const slot = active.orderedRemove(0);
+        slot.thread.join();
+
+        const idx = slot.task_idx;
+        const task = tasks[idx];
+
+        if (task.memory_budget != 0) {
+            used_memory -= task.memory_budget;
+        }
+
+        if (!results[idx]) {
+            std.log.err(
+                "task FAILED id={d} '{s}' program={s} memory_budget={d} cwd={s} (constraint config: max_memory={d} max_parallel={d}; at failure: running={d} used_mem={d} ready_queued={d})",
+                .{
+                    task.id,
+                    taskLabel(task),
+                    task.program,
+                    task.memory_budget,
+                    task.cwd,
+                    max_memory,
+                    max_parallel,
+                    active.items.len,
+                    used_memory,
+                    ready.items.len,
+                },
+            );
+            return error.TaskFailed;
+        }
+
+        done += 1;
+        std.log.info(
+            "done  id={d} '{s}' (done={d}/{d} running={d} used_mem={d} ready_queued={d})",
+            .{ task.id, taskLabel(task), done, n, active.items.len, used_memory, ready.items.len },
+        );
+
+        if (dependents.getPtr(task.id)) |deps| {
+            for (deps.items) |di| {
+                remaining[di] -= 1;
+                if (remaining[di] == 0) {
+                    try ready.append(allocator, di);
                 }
             }
         }
@@ -453,7 +544,10 @@ fn execCmd(task: ZigTask, allocator: std.mem.Allocator) !void {
     const arena = arena_state.allocator();
 
     const prog_z = resolveOnPath(arena, task.program) catch {
-        std.log.err("program not found on PATH: {s}", .{task.program});
+        std.log.err(
+            "program not found on PATH: task id={d} '{s}' program={s}",
+            .{ task.id, taskLabel(task), task.program },
+        );
         return error.TaskFailed;
     };
 
@@ -468,7 +562,10 @@ fn execCmd(task: ZigTask, allocator: std.mem.Allocator) !void {
 
     const pid = std.c.fork();
     if (pid < 0) {
-        std.log.err("fork failed for {s}", .{task.program});
+        std.log.err(
+            "fork failed for task id={d} '{s}' program={s}",
+            .{ task.id, taskLabel(task), task.program },
+        );
         return error.TaskFailed;
     }
 
@@ -485,18 +582,24 @@ fn execCmd(task: ZigTask, allocator: std.mem.Allocator) !void {
 
     var status: c_int = 0;
     if (std.c.waitpid(pid, &status, 0) < 0) {
-        std.log.err("waitpid failed for task {d}", .{task.id});
+        std.log.err("waitpid failed for task id={d} '{s}'", .{ task.id, taskLabel(task) });
         return error.TaskFailed;
     }
 
     if ((status & 0x7f) == 0) {
         const code: u8 = @intCast((status >> 8) & 0xff);
         if (code != 0) {
-            std.log.err("task {d} exited {d}", .{ task.id, code });
+            std.log.err(
+                "task id={d} '{s}' exited with code {d} (program={s})",
+                .{ task.id, taskLabel(task), code, task.program },
+            );
             return error.TaskFailed;
         }
         return;
     }
-    std.log.err("task {d} terminated abnormally (status={d})", .{ task.id, status });
+    std.log.err(
+        "task id={d} '{s}' terminated abnormally (status={d} program={s})",
+        .{ task.id, taskLabel(task), status, task.program },
+    );
     return error.TaskFailed;
 }
