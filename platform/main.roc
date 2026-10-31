@@ -1,6 +1,6 @@
 platform "build"
     requires {} { main! : List(Str) => Try({}, [Exit(I32), ..]) }
-    exposes [Build, BuildCmd, Log, Mem]
+    exposes [Build, BuildCmd, Log, Mem, Parallel, Work, Cancel]
     packages {}
     provides { "roc_main": main_for_host! }
     hosted {
@@ -12,6 +12,20 @@ platform "build"
         "roc_file_read_bytes": Host.file_read_bytes!,
         "roc_file_write_bytes": Host.file_write_bytes!,
         "roc_path_exists": Host.path_exists!,
+
+        # Parallel host boundary — names must match Host.roc
+        "roc_parallel_submit_pure": Host.parallel_submit_pure!,
+        "roc_parallel_submit_effect": Host.parallel_submit_effect!,
+        "roc_parallel_await": Host.parallel_await!,
+        "roc_parallel_compose": Host.parallel_compose!,
+        "roc_parallel_compose_parallel": Host.parallel_compose_parallel!,
+        "roc_parallel_compose_all": Host.parallel_compose_all!,
+        "roc_parallel_compose_all_parallel": Host.parallel_compose_all_parallel!,
+        "roc_parallel_select2": Host.parallel_select2!,
+        "roc_parallel_group_begin": Host.parallel_group_begin!,
+        "roc_parallel_group_end": Host.parallel_group_end!,
+        "roc_parallel_cancel": Host.parallel_cancel!,
+        "roc_parallel_is_cancelled": Host.parallel_is_cancelled!,
     }
     targets: {
         inputs_dir: "targets-out/",
@@ -34,6 +48,9 @@ import Host
 import Build
 import BuildCmd
 import Log
+import Parallel
+import Work
+import Cancel
 
 main_for_host! : List(Str) => I32
 main_for_host! = |args| {

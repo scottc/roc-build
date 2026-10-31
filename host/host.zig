@@ -154,6 +154,8 @@ comptime {
         @export(&hostedFileWriteBytes, .{ .name = "roc_file_write_bytes", .visibility = .hidden });
         @export(&hostedPathExists, .{ .name = "roc_path_exists", .visibility = .hidden });
 
+        _ = @import("parallel.zig");
+
         @export(&hostAlloc, .{ .name = "roc_alloc", .visibility = .hidden });
         @export(&hostDealloc, .{ .name = "roc_dealloc", .visibility = .hidden });
         @export(&hostRealloc, .{ .name = "roc_realloc", .visibility = .hidden });
