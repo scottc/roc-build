@@ -1,25 +1,25 @@
-app [config] { pf: platform "https://github.com/lukewilliamboswell/roc-blueprint/releases/download/0.5.0/CupqPH9snWf11g7tWgcJf4Yg5cJ3K9fhL7fSgqDcqJQH.tar.zst" }
+app [config] { pf: platform "https://github.com/lukewilliamboswell/roc-blueprint/releases/download/0.11.0/EuSPs8vc71qJNFg29YzegvVRL1bR9pKqUYDHFiSCPTQ1.tar.zst" }
+
+import pf.Recipes
 
 # roc versions: https://github.com/roc-lang/roc-overlay/blob/master/sources.json
 
 config = [
 	Name("roc-build"),
-	Overlay("roc", "github:roc-lang/roc-overlay"),
+	Packages("nix", From(NixPackages("github:NixOS/nixpkgs/nixos-unstable"))),
 	Shell("default", [Use("dev-env")]),
 	Environment("dev-env", [
-    	Overlays(["roc"]),
-    	Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
-  			Tools([
-				"zig",
-			]),
+	    Programs([Fetch("roc", Recipes.roc_nightly("nightly-2026-10-28-bad769b"))]),
+		Tools([
+			"nix#zig",
+		]),
 	]),
 	Environment(
 		"ci-env",
 		[
-			Overlays(["roc"]),
-			Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
+		    Programs([Fetch("roc", Recipes.roc_nightly("nightly-2026-10-28-bad769b"))]),
 			Tools([
-				"zig",
+				"nix#zig",
 			]),
 		],
 	),
@@ -31,11 +31,10 @@ config = [
 	Environment(
 		"gh-publish-env",
 		[
-			Overlays(["roc"]),
-			Command("roc", "rocpkgs.nightly-2026-10-15-38e6c42"),
+		    Programs([Fetch("roc", Recipes.roc_nightly("nightly-2026-10-28-bad769b"))]),
 			Tools([
-			    "gh",
-    			"zig",
+			    "nix#gh",
+    			"nix#zig",
 			]),
 		],
 	),
