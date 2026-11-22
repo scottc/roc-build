@@ -2,10 +2,11 @@
 set -eu
 
 #
-# 1) Parse the git commit id from: `roc --version` -> "Roc compiler version nightly-2026-10-15-38e6c42"
-# 2) Fetch https://raw.githubusercontent.com/roc-lang/roc/${COMMIT}/src/glue/src/ZigGlue.roc
-# 3) Write it to .cache/glue/${commit}/ZigGlue.roc
-# 4) Run roc glue
+# 1) Resolve ZigGlue.roc:
+#    - ROC_ZIG_GLUE env, or
+#    - vendor/glue/ZigGlue.roc, or
+#    - fetch from roc-lang/roc at the commit matching `roc version`
+# 2) Run: roc glue <ZigGlue.roc> host/ platform/main.roc
 #
 
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
@@ -22,9 +23,24 @@ if [ -z "$ZIG_GLUE" ] && [ -f "$ROOT/vendor/glue/ZigGlue.roc" ]; then
 fi
 
 if [ -z "$ZIG_GLUE" ]; then
-  # roc version → "Roc compiler version nightly-2026-10-15-38e6c42"
   VERSION_LINE="$(roc version 2>/dev/null || roc --version 2>/dev/null || true)"
+  COMMIT=""
+
+  # nightly-YYYY-MM-DD-<hash>
   COMMIT="$(printf '%s\n' "$VERSION_LINE" | sed -n 's/.*nightly-[0-9]\{4\}-[0-9]\{2\}-[0-9]\{2\}-\([0-9a-f]\{7,40\}\).*/\1/p')"
+
+  # 0.1.0_RC1 (and future RCs) — hard-map known tags → full commit
+  if [ -z "$COMMIT" ]; then
+    case "$VERSION_LINE" in
+      *"0.1.0_RC1"*)
+        # https://github.com/roc-lang/roc/releases/tag/0.1.0_RC1
+        COMMIT="15177e91f62cafddf5336c455e00e9f05427ac16"
+        ;;
+      # add more RC tags here as they appear
+    esac
+  fi
+
+  # bare "version X.Y.Z" with no tag info — leave COMMIT empty (error below)
 
   if [ -z "$COMMIT" ]; then
     echo "error: could not parse commit from: $VERSION_LINE" >&2
