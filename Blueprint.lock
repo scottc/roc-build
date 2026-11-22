@@ -2,36 +2,36 @@
 	(fetched ((
 		(name "roc")
 		(obtained Both)
-		(served ())
-		(sha256 "aeacbeb60f273ea85657a003e2ec39461595f3261bb69c9e16ea18a6563ae8d9")
-		(size 74712401)
+		(served ("release-assets.githubusercontent.com"))
+		(sha256 "043c426ea85dcdbd427951eaed246f0c10c171d988f2598782233a6dae43379d")
+		(size 94996501)
 		(system "x86_64-linux")
-		(urls ("https://github.com/roc-lang/nightlies/releases/download/nightly-2026-10-28-bad769b/roc_nightly-linux_x86_64-2026-10-28-bad769b.tar.gz"))
-		(witness "https://api.github.com/repos/roc-lang/nightlies/releases/tags/nightly-2026-10-28-bad769b")) (
+		(urls ("https://github.com/roc-lang/roc/releases/download/0.1.0_RC1/roc-linux_x86_64-0.1.0_RC1.tar.gz"))
+		(witness "https://api.github.com/repos/roc-lang/roc/releases/tags/0.1.0_RC1")) (
 		(name "roc")
 		(obtained Published)
 		(served ())
-		(sha256 "0f51a80492b70b4c282f0b9577d74d29ead4000024bc7db04a308d6102e82aef")
-		(size 71511095)
+		(sha256 "b3e0a9dbc922f3802702a55a1869ad2c2e4f4dc935d8a9d1b26c3612668dff43")
+		(size 91135172)
 		(system "aarch64-linux")
-		(urls ("https://github.com/roc-lang/nightlies/releases/download/nightly-2026-10-28-bad769b/roc_nightly-linux_arm64-2026-10-28-bad769b.tar.gz"))
-		(witness "https://api.github.com/repos/roc-lang/nightlies/releases/tags/nightly-2026-10-28-bad769b")) (
+		(urls ("https://github.com/roc-lang/roc/releases/download/0.1.0_RC1/roc-linux_arm64-0.1.0_RC1.tar.gz"))
+		(witness "https://api.github.com/repos/roc-lang/roc/releases/tags/0.1.0_RC1")) (
 		(name "roc")
 		(obtained Published)
 		(served ())
-		(sha256 "292c8059591819468ba07dc694c8248685ddd76e259d031cbd07e7c6c9dea16a")
-		(size 75658583)
-		(system "x86_64-darwin")
-		(urls ("https://github.com/roc-lang/nightlies/releases/download/nightly-2026-10-28-bad769b/roc_nightly-macos_x86_64-2026-10-28-bad769b.tar.gz"))
-		(witness "https://api.github.com/repos/roc-lang/nightlies/releases/tags/nightly-2026-10-28-bad769b")) (
-		(name "roc")
-		(obtained Published)
-		(served ())
-		(sha256 "69939f3535b2977465379e806a196affedbc65310545479d5a638ef6d15304c7")
-		(size 71588923)
+		(sha256 "e8228040c701e130254c72539a1d0f1b150d78c00058747edb0edae51ba5dbc8")
+		(size 92607690)
 		(system "aarch64-darwin")
-		(urls ("https://github.com/roc-lang/nightlies/releases/download/nightly-2026-10-28-bad769b/roc_nightly-macos_apple_silicon-2026-10-28-bad769b.tar.gz"))
-		(witness "https://api.github.com/repos/roc-lang/nightlies/releases/tags/nightly-2026-10-28-bad769b"))))
+		(urls ("https://github.com/roc-lang/roc/releases/download/0.1.0_RC1/roc-macos_apple_silicon-0.1.0_RC1.tar.gz"))
+		(witness "https://api.github.com/repos/roc-lang/roc/releases/tags/0.1.0_RC1")) (
+		(name "roc")
+		(obtained Published)
+		(served ())
+		(sha256 "ea9b38b5e4708cbe42c92077e816f5241299da1aa3f4c46e8cb933b1aa2af858")
+		(size 98154874)
+		(system "x86_64-darwin")
+		(urls ("https://github.com/roc-lang/roc/releases/download/0.1.0_RC1/roc-macos_x86_64-0.1.0_RC1.tar.gz"))
+		(witness "https://api.github.com/repos/roc-lang/roc/releases/tags/0.1.0_RC1"))))
 	(format (
 		(major 2)
 		(minor 0)))
@@ -65,15 +65,15 @@
 						(name "locked")
 						(value (Attrs ((
 							(name "lastModified")
-							(value (Int 1793341285))) (
+							(value (Int 1795234589))) (
 							(name "narHash")
-							(value (Str "sha256-Y1CiZ4SoBUjLQyQM/pY+rS2dXD3CHLPstF0lmOc73D4="))) (
+							(value (Str "sha256-f/VVvxf5RsQgWVhUtefoca5ktVg0DA2bnkMOcmSnozo="))) (
 							(name "owner")
 							(value (Str "NixOS"))) (
 							(name "repo")
 							(value (Str "nixpkgs"))) (
 							(name "rev")
-							(value (Str "1c89083e451e891152365b799595cf7790a43325"))) (
+							(value (Str "2786a2a72088ecf32aea5b3ec52099e6a7cff78f"))) (
 							(name "type")
 							(value (Str "github"))))))) (
 						(name "original")
@@ -106,8 +106,8 @@
 				(ref "github:NixOS/nixpkgs/nixos-unstable")
 				(version 1))))))))
 	(sources ((
-		(digest "sha256:6350a26784a80548cb43240cfe963ead2d9d5c3dc21cb3ecb45d2598e73bdc3e")
+		(digest "sha256:7ff555bf17f946c420595854b5e7e871ae64b558340c0d9b9e430e7264a7a33a")
 		(name "nix")
 		(provider "nix")
 		(ref "github:NixOS/nixpkgs/nixos-unstable")
-		(rev "1c89083e451e891152365b799595cf7790a43325")))))
+		(rev "2786a2a72088ecf32aea5b3ec52099e6a7cff78f")))))
