@@ -47,8 +47,8 @@ mkdir -p bundle-out
 log "generate host/roc_platform_abi.zig"
 sh scripts/gen_glue.sh
 
-log "install static deps (crt, libc, …)"
-cp -a vendor/targets/x64musl/. platform/targets-out/x64musl/
+log "materialize PIC static deps via zig → .cache/link-inputs"
+sh scripts/materialize_link_inputs.sh
 
 log "build zig host → platform/targets-out/x64musl/libhost.a"
 zig build-lib \
